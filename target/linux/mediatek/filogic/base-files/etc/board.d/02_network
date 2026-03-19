@@ -127,6 +127,9 @@ mediatek_setup_interfaces()
 	zyxel,nwa50ax-pro)
 		ucidef_set_interface_lan "eth0"
 		;;
+	comfast,cf-xr186)
+		ucidef_set_interface_lan "eth1"
+		;;
 	airpi,ap3000m|\
 	bananapi,bpi-r3-mini|\
 	edgecore,eap111|\
