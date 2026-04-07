@@ -48,27 +48,27 @@
 		compatible = "gpio-leds";
 
 		led_wifi_blue: led_wifi_blue {
-			label = "led:wifi_blue";
+			label = "blue:wifi";
 			gpios = <&pio 6 GPIO_ACTIVE_LOW>;
 			linux,default-trigger = "phy1tpt";
 		};
 
 		led_wifi_green: led_wifi_green {
-			label = "led:wifi_green";
+			label = "green:wifi";
 			gpios = <&pio 35 GPIO_ACTIVE_LOW>;
 			color = <LED_COLOR_ID_GREEN>;
 			function = LED_FUNCTION_LAN;
 		};
 
 		led_wifi_red: led_wifi_red {
-			label = "led:wifi_red";
+			label = "red:wifi";
 			gpios = <&pio 34 GPIO_ACTIVE_LOW>;
 			color = <LED_COLOR_ID_RED>;
 			function = LED_FUNCTION_WAN;
 		};
 
-		led_ethernet: led_ethernet {
-			label = "led:ethernet";
+		led_ethernet {
+			label = "blue:ethernet";
 			gpios = <&pio 4 GPIO_ACTIVE_LOW>;
 		};
 	};
