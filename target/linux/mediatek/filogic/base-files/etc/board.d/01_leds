@@ -69,7 +69,7 @@ bazis,ax3000wm)
 	ucidef_set_led_netdev "internet" "internet" "blue:wan-online" "wan" "link"
 	;;
 comfast,cf-xr186)
-	ucidef_set_led_netdev "ethernet" "Ethernet Activity" "blue:ethernet" "eth1" "link tx rx"
+	ucidef_set_led_netdev "ethernet" "Ethernet Activity" "blue:ethernet" "eth0" "link tx rx"
 	ucidef_set_led_netdev "br-lan" "br-lan Activity" "blue:wifi" "br-lan" "link tx rx"
 	;;
 cudy,re3000-v1|\
