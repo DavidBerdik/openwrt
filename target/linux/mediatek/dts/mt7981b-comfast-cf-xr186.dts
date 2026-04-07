@@ -83,18 +83,6 @@
 	pinctrl-0 = <&mdio_pins>;
 	status = "okay";
 
-	gmac0: mac@0 {
-		compatible = "mediatek,eth-mac";
-		reg = <0>;
-		phy-mode = "2500base-x";
-
-		fixed-link {
-			speed = <2500>;
-			full-duplex;
-			pause;
-		};
-	};
-
 	gmac1: mac@1 {
 		compatible = "mediatek,eth-mac";
 		reg = <1>;
