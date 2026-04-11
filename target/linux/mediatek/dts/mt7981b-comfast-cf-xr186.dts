@@ -11,6 +11,7 @@
 	compatible = "comfast,cf-xr186", "mediatek,mt7981";
 
 	aliases {
+		label-mac-device = &gmac1;
 		serial0 = &uart0;
 		led-boot = &led_wifi_blue;
 		led-failsafe = &led_wifi_red;
