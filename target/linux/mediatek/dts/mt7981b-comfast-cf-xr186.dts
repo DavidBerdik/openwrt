@@ -40,22 +40,22 @@
 	leds {
 		compatible = "gpio-leds";
 
-		led_wifi_blue: led_wifi_blue {
+		led_wifi_blue: led-wifi-blue {
 			label = "blue:wifi";
 			gpios = <&pio 6 GPIO_ACTIVE_LOW>;
 		};
 
-		led_wifi_green: led_wifi_green {
+		led_wifi_green: led-wifi-green {
 			label = "green:wifi";
 			gpios = <&pio 35 GPIO_ACTIVE_LOW>;
 		};
 
-		led_wifi_red: led_wifi_red {
+		led_wifi_red: led-wifi-red {
 			label = "red:wifi";
 			gpios = <&pio 34 GPIO_ACTIVE_LOW>;
 		};
 
-		led_ethernet {
+		led-ethernet {
 			label = "blue:ethernet";
 			gpios = <&pio 4 GPIO_ACTIVE_LOW>;
 		};
