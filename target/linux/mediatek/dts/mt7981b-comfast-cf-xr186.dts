@@ -51,19 +51,19 @@
 
 		led_wifi_blue: led-wifi-blue {
 			color = <LED_COLOR_ID_BLUE>;
-			function = "wifi";
+			function = LED_FUNCTION_WLAN;
 			gpios = <&pio 6 GPIO_ACTIVE_LOW>;
 		};
 
 		led_wifi_green: led-wifi-green {
 			color = <LED_COLOR_ID_GREEN>;
-			function = "wifi";
+			function = LED_FUNCTION_WLAN;
 			gpios = <&pio 35 GPIO_ACTIVE_LOW>;
 		};
 
 		led_wifi_red: led-wifi-red {
 			color = <LED_COLOR_ID_RED>;
-			function = "wifi";
+			function = LED_FUNCTION_WLAN;
 			gpios = <&pio 34 GPIO_ACTIVE_LOW>;
 		};
 
