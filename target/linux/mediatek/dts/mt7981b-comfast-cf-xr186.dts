@@ -23,7 +23,7 @@
 		serial0 = &uart0;
 		led-boot = &led_wifi_red;
 		led-failsafe = &led_wifi_red;
-		led-upgrade = &led_wifi_green;
+		led-upgrade = &led_wifi_red;
 	};
 
 	chosen {
