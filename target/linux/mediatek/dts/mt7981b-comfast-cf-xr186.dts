@@ -21,7 +21,7 @@
 	aliases {
 		label-mac-device = &gmac1;
 		serial0 = &uart0;
-		led-boot = &led_wifi_blue;
+		led-boot = &led_wifi_red;
 		led-failsafe = &led_wifi_red;
 		led-upgrade = &led_wifi_green;
 	};
