@@ -11,13 +11,6 @@
 	model = "COMFAST CF-XR186";
 	compatible = "comfast,cf-xr186", "mediatek,mt7981";
 
-	/*
-	 * No led-running alias: there is no GPIO LED suited to mean "system up"
-	 * without clashing with post-boot use. The power LED is always on and not
-	 * controllable; the Ethernet LED is link/activity; the RGB WiFi LEDs are
-	 * used for boot/failsafe/upgrade and then for wireless (and netdev) activity,
-	 * matching OEM behaviour which also does not dedicate one to idle running.
-	 */
 	aliases {
 		label-mac-device = &gmac1;
 		serial0 = &uart0;
