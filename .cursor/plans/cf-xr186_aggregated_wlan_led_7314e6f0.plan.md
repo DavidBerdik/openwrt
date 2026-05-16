@@ -4,7 +4,7 @@ overview: "Address [namiltd’s PR #22471 comment](https://github.com/openwrt/op
 todos:
   - id: prereq-19903
     content: "Merge PR #19903 into the CF-XR186 dev branch (see §4): fetch `pull/19903/head` or `namiltd/ledtrig`, merge, resolve conflicts, build kernel, verify `network` in LED triggers on hardware"
-    status: pending
+    status: completed
   - id: filogic-kmod
     content: Add `kmod-ledtrig-network` to `DEVICE_PACKAGES` for `comfast_cf-xr186` in target/linux/mediatek/image/filogic.mk
     status: pending
