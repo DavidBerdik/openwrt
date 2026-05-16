@@ -15,7 +15,28 @@ todos:
     content: In filogic base-files 01_leds, remove wlan2g/wlan5g netdev lines for comfast,cf-xr186; keep blue:lan on eth0; add short comment if desired
     status: completed
   - id: runtime-verify
-    content: Run the §6 test matrix on hardware (both bands, single band, repeater uplink) and capture dmesg/sysfs for the PR thread
+    content: "Run §6 test matrix on hardware + paste logs on PR; offline: bash -n 01_leds (done in agent)"
+    status: completed
+  - id: manual-build-flash
+    content: "Build sysupgrade for comfast_cf-xr186 from dev branch; flash; factory-reset if needed; note OpenWrt version and exact git SHA in test log (§6.3)"
+    status: pending
+  - id: manual-prereq-ssh-wifi
+    content: "On device: SSH in; confirm phy0-ap0 and phy1-ap0 exist when radios enabled; save `ip -br link`, `wifi status`, `uci show wireless` redacted for PR appendix (§6.4)"
+    status: pending
+  - id: manual-sysfs-module-dump
+    content: "Collect §6.5 bundle: module presence, `trigger`/`brightness` for blue:wlan green:wlan blue:lan, `family`/`link`/`tx`/`rx` sysfs for network trigger, optional `dmesg` grep (§6.5)"
+    status: pending
+  - id: manual-wlan-matrix
+    content: "Execute §6.6 matrix (2.4G-only / 5G-only / both / one-radio-down / repeater uplink per band); for each row record expected vs observed blue WiFi LED (§6.6)"
+    status: pending
+  - id: manual-ethernet-lan-led
+    content: "§6.7: With WiFi idle, generate sustained eth0 traffic; confirm blue:lan netdev behavior unchanged; confirm blue:wlan does not mirror wired-only load unless bridged (§6.7)"
+    status: pending
+  - id: manual-diag-boot
+    content: "§6.8: Cold boot observe red WiFi LED for boot/running; failsafe if you test it; confirm green:wlan stays dark by default (§6.8)"
+    status: pending
+  - id: manual-pr-attachment
+    content: "§6.9: Open GitHub PR comment with markdown sections + attached or inline logs; tick checklist for reviewers (§6.9)"
     status: pending
 isProject: false
 ---
@@ -45,7 +66,9 @@ PR **#19903** ([openwrt/openwrt#19903](https://github.com/openwrt/openwrt/pull/1
 
 **MediaTek `mediatek` target** in current OpenWrt uses **`KERNEL_PATCHVER := 6.18`** ([`target/linux/mediatek/Makefile`](target/linux/mediatek/Makefile)), so the **6.18** generic files and hack patch are the ones that matter for filogic.
 
-**Blocking fact:** In the workspace used for this research, **`820-ledtrig-network-module.patch` and `ledtrig-network.c` are absent** — the functionality is **not** in `main` until #19903 (or equivalent) lands. Any CF-XR186 change that assumes the `network` trigger **will not build or run** without that prerequisite.
+**Blocking fact:** Without merging [#19903](https://github.com/openwrt/openwrt/pull/19903) (or equivalent), **`820-ledtrig-network-module.patch` and `ledtrig-network.c` are not present** and the `network` trigger **will not build or run**. After the dev branch includes #19903, this prerequisite is satisfied.
+
+**Note:** If your tree already merged #19903, the artifacts in the table above **are** present; use §4.6 sanity commands in the plan to confirm.
 
 ---
 
@@ -305,20 +328,187 @@ If `preinit` / `diag.sh` ever forces triggers on **all** `gpio-leds`, re-test; i
 
 ## 6. Testing protocol (share with reviewers)
 
-1. **Image contents:** `opkg files kmod-ledtrig-network` or `ls /overlay/upper/...` as appropriate; confirm module present.
-2. **Sysfs:**
+This section is written so **another developer with a CF-XR186 and a serial cable (optional)** can reproduce results without prior context. Keep a **single log file** on your laptop (e.g. `cf-xr186-led-test-YYYYMMDD.txt`) and paste excerpts into [PR #22471](https://github.com/openwrt/openwrt/pull/22471).
 
-   ```sh
-   cat /sys/class/leds/blue:wlan/trigger
-   cat /sys/class/leds/green:wlan/trigger   # expect [none] or none default
-   ```
+### 6.0 What “pass” means (acceptance summary)
 
-3. **dmesg:** filter for `ledtrig_network` / `network:` strings (PR #19903 logs attachment lines like `LED … trigger wlan(…)` when debug level allows — exact `pr_info` strings are in the driver).
-4. **Functional:**
-   - Both radios up as AP/sta; generate traffic on **2.4G only** — **blue** should react.
-   - Same on **5G only** — **blue** should react (this is the regression fix vs single-`phy` `netdev`).
-   - Repeater mode using only one band for uplink — **blue** still reacts to the active radio.
-5. **Ethernet:** `blue:lan` still tracks **`eth0`** only (unchanged).
+| Area | Pass criteria |
+|------|----------------|
+| **Packaging** | `kmod-ledtrig-network` is installed on the running image (or `ledtrig-network.ko` exists under `/lib/modules/$(uname -r)/`). |
+| **`blue:wlan`** | Sysfs `trigger` shows **`[network]`** as the active trigger after boot (not overwritten to `netdev` by UCI). |
+| **`green:wlan`** | Active trigger remains **`none`** (or equivalent default) with **no** `system.led` UCI entry driving it. |
+| **`blue:lan`** | Still **`netdev`** tracking **`eth0`** from board defaults / UCI; visible link/activity when only Ethernet is used. |
+| **Aggregation** | With traffic on **only** `phy0-ap0` **or** **only** `phy1-ap0`, **blue** WiFi LED shows **activity** (throughput-style blink per #19903); not stuck dark when the *other* radio is unused. |
+| **Boot / diag** | **Red** WiFi LED still used for boot/failsafe/upgrade/running per DTS aliases; no regression vs prior behavior. |
+
+### 6.1 Offline (repository) checks
+
+Run on the OpenWrt tree **before** flashing:
+
+```sh
+cd /path/to/openwrt
+bash -n target/linux/mediatek/filogic/base-files/etc/board.d/01_leds
+echo "expect exit 0; got $?"
+```
+
+Optional but valuable CI-style checks:
+
+```sh
+# Confirm DTS still declares network trigger only on wifi_blue
+grep -n 'default-trigger\|family\|mode' target/linux/mediatek/dts/mt7981b-comfast-cf-xr186.dts
+# Confirm device image pulls in the module package
+grep -n 'comfast_cf-xr186' -A20 target/linux/mediatek/image/filogic.mk | grep ledtrig-network
+```
+
+### 6.2 Equipment and safety
+
+- **Hardware:** COMFAST CF-XR186, Ethernet cable, PC, **SSH access** (LuCI optional).
+- **Recommended:** USB–serial on UART (115200 8N1) for failsafe recovery if WiFi is misconfigured during tests.
+- **Power:** Stable supply; avoid unplugging during `sysupgrade`.
+- **Privacy:** When attaching `uci show wireless` or `wifi status` to a public PR, **redact SSIDs/passwords** or use lab-only credentials.
+
+### 6.3 Image build, flash, and baseline capture
+
+1. **Select target** in `make menuconfig`: Target System **MediaTek Ralink ARM**, Subtarget **Filogic 8x0**, Target Profile **COMFAST CF-XR186** (or enable `CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_comfast_cf-xr186=y`).
+2. **Build:** `make -j$(nproc) defconfig` (if needed) then `make -j$(nproc)` or at minimum `make -j$(nproc) image` for the sysupgrade artifact.
+3. **Record in your log file:**
+   - Output of `git rev-parse HEAD` from the build tree.
+   - Exact image filename flashed (e.g. `openwrt-…-comfast_cf-xr186-squashfs-sysupgrade.bin`).
+4. **Flash** via OEM web UI or existing OpenWrt sysupgrade flow per device documentation.
+5. **After first boot:** If you did not reset config, note whether tests use **default** or **migrated** wireless — for LED tests, **default APs on both radios** are easiest.
+
+### 6.4 SSH session: confirm wireless netdev names
+
+Log in via SSH and run:
+
+```sh
+uname -a
+. /etc/openwrt_release && echo "$DISTRIB_RELEASE $DISTRIB_REVISION"
+
+ip -br link | sort
+wifi status 2>/dev/null || true
+iw dev 2>/dev/null | sed -n '1,120p'
+```
+
+**What to verify:**
+
+- When both radios are enabled, you should see interfaces named like **`phy0-ap0`** and **`phy1-ap0`** (OpenWrt default). If your config renames interfaces, **note the actual names** — the `ledtrig-network` driver matches `phy*` prefixes; document any non-default naming in the PR.
+- Save this block **verbatim** (after redaction) into your test log — reviewers use it to interpret LED behavior.
+
+### 6.5 Sysfs and module evidence bundle
+
+Run on the device and append full output to your log file:
+
+```sh
+# Module
+ls -la /lib/modules/$(uname -r)/ledtrig-network.ko 2>&1
+modinfo ledtrig-network 2>&1 | head -40
+
+# Triggers (angle brackets show active trigger)
+for led in blue:wlan green:wlan blue:lan; do
+  [ -e "/sys/class/leds/$led/trigger" ] || { echo "MISSING $led"; continue; }
+  echo "===== $led ====="
+  cat "/sys/class/leds/$led/trigger"
+  echo -n "brightness: "; cat "/sys/class/leds/$led/brightness" 2>/dev/null; echo
+done
+
+# ledtrig-network per-LED sysfs (present only when trigger is network)
+for f in family link tx rx; do
+  p="/sys/class/leds/blue:wlan/$f"
+  [ -e "$p" ] && { echo -n "blue:wlan $f: "; cat "$p"; echo; } || echo "blue:wlan/$f absent"
+done
+
+# Kernel messages (size-bounded)
+dmesg | grep -iE 'ledtrig|network:' | tail -n 80
+```
+
+**Interpretation for reviewers:**
+
+- **`blue:wlan`:** active trigger must be **`network`**. If it shows **`netdev`**, something (UCI `system.led`, or manual LuCI change) overwrote the DTS default — **fail**, investigate `/etc/config/system` for a `blue:wlan` LED section and remove it or set trigger `none` then reboot.
+- **`green:wlan`:** expect **`[none]`** (or `none` as first/default). If it shows `netdev` or `network`, find what configured it.
+- **`blue:lan`:** expect **`[netdev]`** and `device_name` pointing at **`eth0`** when inspected:
+
+```sh
+grep -E . /sys/class/leds/blue:lan/device_name 2>/dev/null; \
+  for m in link tx rx; do [ -e "/sys/class/leds/blue:lan/$m" ] && echo "$m=$(cat /sys/class/leds/blue:lan/$m)"; done
+```
+
+### 6.6 WLAN aggregation test matrix (core functional proof)
+
+Perform tests in order; after **each** row, add a **one-line result** to your log: `RESULT: <row_id> PASS|FAIL — note`.
+
+**Preparation for all rows:** Both radios enabled; device has IP on LAN; you can SSH over Ethernet **or** WiFi (Ethernet preferred so WiFi changes do not drop the session).
+
+| ID | Wireless configuration (high level) | Traffic generation (examples) | Expected **blue** WiFi LED (qualitative) |
+|----|----------------------------------------|-------------------------------|------------------------------------------|
+| W1 | 2.4G AP **up**, 5G radio **down** or AP disabled | From LAN client: `ping -f <router_2.4g_ip>` or iperf3 UDP to router | LED shows **activity** (blink rate may follow throughput table in #19903, not old netdev flicker). |
+| W2 | 5G AP **up**, 2.4G **down** or disabled | Same toward 5G AP IP | **Activity** on **blue** WiFi LED. |
+| W3 | Both APs **up** | Alternate heavy traffic on 2.4G then 5G (separate runs) | Each run: **blue** reacts — proves you are not tied to a single `phy` in `01_leds`. |
+| W4 | Both APs **up**; then **disable** one radio in UCI/`wifi` | Traffic only on remaining band | LED still reacts; **not** stuck off because the disabled radio was the one previously mapped in old `netdev` config. |
+| W5 | **Repeater / STA** style: station on one band to upstream AP (use lab SSID) | Generate traffic through the uplink (e.g. speedtest, iperf via router) | **Blue** shows activity when the **active** STA interface carries traffic, regardless of whether uplink is 2.4G or 5G (document which `phy*-sta0` / `phy*-ap0` names were in use). |
+
+**How to observe the LED objectively (optional but helpful):**
+
+- Film a short phone video of the LED during W1–W5, or describe in text: *steady / slow blink / fast blink / off when idle*.
+- If the LED appears always off during traffic, capture **simultaneous** `cat /sys/class/leds/blue:wlan/trigger` and `cat /sys/class/leds/blue:wlan/brightness` while `ping -f` runs.
+
+**Failure triage quick table:**
+
+| Symptom | First checks |
+|---------|----------------|
+| `network` missing from `trigger` list | `ls modinfo`; `lsmod | grep ledtrig`; confirm `kmod-ledtrig-network` in image. |
+| `blue:wlan` trigger is `netdev` | `/etc/config/system` LED sections; LuCI LED Configuration. |
+| LED dark but trigger is `network` | Throughput threshold — try higher traffic; check `brightness` not forced to 0; check `dmesg` for errors. |
+
+### 6.7 Ethernet `blue:lan` regression test
+
+Goal: prove **`blue:lan`** is still driven by **`netdev`** on **`eth0`**, independent of WiFi aggregation.
+
+1. **Disable or idle WiFi** (both radios down, or no clients) to isolate Ethernet visually if possible.
+2. From a wired PC: sustained load to the router (e.g. `iperf3 -c <router> -t 20` on LAN, or large `scp`).
+3. **Observe `blue:lan`** (physical blue “LAN” icon LED): should show link/activity behavior consistent with **netdev** trigger.
+4. Optionally capture:
+
+```sh
+cat /sys/class/leds/blue:lan/trigger
+cat /sys/class/leds/blue:lan/device_name
+```
+
+**Note:** If LAN and WLAN share a bridge for traffic, you might still see **WiFi** LED activity from bridged traffic — the important regression check is that **`blue:lan`** remains configured as **netdev** on **`eth0`**, not that LEDs are electromagnetically isolated.
+
+### 6.8 Boot, running, and failsafe (red / green LEDs)
+
+1. **Cold boot:** Power cycle; watch **red** WiFi LED for boot sequence (should match prior device behavior / OEM pattern expectations).
+2. **`led-running`:** DTS aliases point running state at **red** WiFi LED — confirm steady or slow blink “system up” as before; document if behavior changed.
+3. **`green:wlan`:** Through all tests in §6.6, confirm it stays **off** unless you deliberately assign a trigger in UCI/LuCI.
+4. **Failsafe (optional, advanced):** Only if you are comfortable with OpenWrt failsafe: trigger failsafe, observe **red** LED pattern; do **not** leave device stuck in failsafe — document outcome.
+
+### 6.9 PR attachment template (copy into GitHub comment)
+
+Use this structure when posting results:
+
+```markdown
+## CF-XR186 LED test (aggregated wlan / ledtrig-network)
+
+**Image:** `<filename>`  
+**OpenWrt:** `<output of /etc/openwrt_release>`  
+**Git:** `<sha>`  
+
+### A. Sysfs bundle
+<paste §6.5 outputs>
+
+### B. WLAN matrix
+- W1: PASS/FAIL — notes
+- W2: …
+
+### C. Ethernet blue:lan
+PASS/FAIL — notes
+
+### D. Boot / diag
+PASS/FAIL — notes
+```
+
+Attach or link the full **`cf-xr186-led-test-YYYYMMDD.txt`** if it is large.
 
 ---
 
