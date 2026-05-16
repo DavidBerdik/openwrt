@@ -1,9 +1,9 @@
 ---
 name: CF-XR186 aggregated WLAN LED
-overview: "Address [namiltd’s PR #22471 comment](https://github.com/openwrt/openwrt/pull/22471#issuecomment-4365649518) by adopting the **network** LED trigger from [PR #19903](https://github.com/openwrt/openwrt/pull/19903): once that kernel support is in your branch, use **device tree** on `blue:wlan` only (aggregated **wlan** family across `phy0-ap0` and `phy1-ap0`), remove per-radio **netdev** entries from `01_leds`, and ship `kmod-ledtrig-network` on the CF-XR186 image. **Green WiFi LED stays unassigned** (no `ucidef` / no default trigger), per your choice."
+overview: "Address [namiltd’s PR #22471 comment](https://github.com/openwrt/openwrt/pull/22471#issuecomment-4365649518) by adopting the **network** LED trigger from [PR #19903](https://github.com/openwrt/openwrt/pull/19903). **Merge PR #19903 into the CF-XR186 dev branch** (§4) until it lands on `main`. Then use **device tree** on `blue:wlan` only (aggregated **wlan** family across `phy0-ap0` and `phy1-ap0`), remove per-radio **netdev** entries from `01_leds`, and ship `kmod-ledtrig-network` on the CF-XR186 image. **Green WiFi LED stays unassigned** (no `ucidef` / no default trigger), per your choice."
 todos:
   - id: prereq-19903
-    content: "Land PR #19903 on the branch (merge from main, cherry-pick namiltd/ledtrig, or equivalent files: leds.mk, ledtrig-network.c, hack-6.18, config-6.18, bcm27xx refresh if applicable) and verify `network` appears in /sys/class/leds/*/trigger on a test image"
+    content: "Merge PR #19903 into the CF-XR186 dev branch (see §4): fetch `pull/19903/head` or `namiltd/ledtrig`, merge, resolve conflicts, build kernel, verify `network` in LED triggers on hardware"
     status: pending
   - id: filogic-kmod
     content: Add `kmod-ledtrig-network` to `DEVICE_PACKAGES` for `comfast_cf-xr186` in target/linux/mediatek/image/filogic.mk
@@ -96,27 +96,138 @@ There is **no** `case "network"` in `init.d/led` on current `main` — so **runt
 
 ---
 
-## 4. Prerequisite: get #19903 (or equivalent) into the branch you build
+## 4. Prerequisite: merge PR #19903 into your dev branch (before CF-XR186 LED work)
 
-Pick **one** strategy (do not mix inconsistently):
+This section is the **canonical workflow** for this effort: **PR #19903 is not merged into `openwrt/openwrt` `main` yet**, so the dev branch used for CF-XR186 + aggregated WLAN LED must **include #19903’s changes explicitly** (merge or equivalent). After #19903 lands on `main`, you can instead **rebase onto `main`** and drop this merge; until then, treat the steps below as required.
 
-| Strategy | Steps | When to use |
-|----------|--------|----------------|
-| **A. Wait for merge to `openwrt/main`** | Rebase your device branch onto `main` after #19903 merges; then apply **only** CF-XR186 DTS + `01_leds` + `filogic.mk` changes (section 5). | Lowest maintenance; depends on merge timeline. |
-| **B. Cherry-pick / merge namiltd’s commits** | From `namiltd/openwrt` branch `ledtrig`, take the **same commit set** as #19903 (at minimum the files listed in §1.2). Resolve conflicts against current `main`. Include the **bcm27xx patch refresh** if your branch still carries that hunk — it is part of the upstream PR to keep the tree consistent. | You need the feature before merge. |
-| **C. Vendor identical patches** | Copy the same paths/contents as #19903 into your branch with new commits, preserving authorship (`Co-developed-by` / `Link:` to #19903 as appropriate per OpenWrt practice). | Only if you cannot merge commits cleanly. |
+### 4.1 What you are merging (identity of the branch)
 
-**Build verification after prerequisite:**
+- **GitHub PR:** [openwrt/openwrt#19903](https://github.com/openwrt/openwrt/pull/19903) — *“leds: add network LED trigger (lan/wan/wlan)”*.
+- **Contributor fork / branch:** `namiltd/openwrt`, branch **`ledtrig`** (this is the branch GitHub shows as the PR head; tip commit OID changes when the author force-pushes — always verify after fetch with `git log -1 FETCH_HEAD`).
+- **Why not only “copy files by hand”?** A manual copy drifts from the reviewed PR, omits the **bcm27xx patch refresh** commit, and makes attribution harder. **Prefer a real git merge** of the PR head into your dev branch so history shows the dependency.
+
+### 4.2 Preconditions (every developer on the branch)
+
+1. **Clone / clean tree:** You have a full OpenWrt tree; `git status` is clean or you have stashed local edits.
+2. **Dev branch checked out:** e.g. `git checkout add-support-comfast-cf-xr186` (replace with your actual branch name for CF-XR186 work).
+3. **Network:** `git fetch` must reach GitHub (HTTPS or SSH).
+4. **OpenWrt build deps:** Same as usual for building `target/linux` for `mediatek` / `filogic` (see OpenWrt wiki “Build system installation”).
+
+### 4.3 Fetch PR #19903 head without adding a permanent remote (recommended)
+
+GitHub exposes the PR tip on the **base** repo as ref **`pull/<id>/head`**. You can fetch it into a local branch name:
 
 ```sh
-# From OpenWrt tree, with filogic + cf-xr186 selected:
-make target/linux/compile V=s
-# On device or staging rootfs:
-ls /sys/class/leds/blue:wlan/trigger | grep -w network
-modinfo ledtrig-network  # if built as module
+cd /path/to/openwrt
+
+# Optional: record where you were
+git branch backup/dev-before-19903-$(date +%Y%m%d)
+
+# Fetch the PR tip from openwrt/openwrt (works for PRs opened from forks too)
+git fetch https://github.com/openwrt/openwrt.git pull/19903/head:pr-19903-head
+
+# Inspect what you fetched (verify commits and files)
+# Use the same upstream ref you track (examples below).
+git log --oneline origin/main..pr-19903-head
+git diff --stat origin/main...pr-19903-head
 ```
 
-If `network` does not appear in `trigger`, the module is not built/loaded or the LED is not registered — stop and fix kernel integration before DTS.
+**Note on baseline:** If your dev branch tracks **`origin/main`** or **`openwrt/main`**, compare against that same ref so you see exactly what #19903 adds on top of upstream. If your branch already diverged from `main`, `git merge pr-19903-head` still applies the **same patches** as the PR; conflict probability is higher the older your branch is.
+
+### 4.4 Alternative fetch: contributor remote + branch `ledtrig`
+
+Useful if you work with namiltd’s fork often:
+
+```sh
+git remote add namiltd https://github.com/namiltd/openwrt.git
+# or: git remote add namiltd git@github.com:namiltd/openwrt.git
+
+git fetch namiltd ledtrig:pr-19903-head
+git log -1 --oneline pr-19903-head
+```
+
+Either **§4.3** or **§4.4** should leave you with a local ref **`pr-19903-head`** pointing at the same PR tip (verify with `gh pr view 19903 --json headRefOid` if you use GitHub CLI).
+
+### 4.5 Merge into your dev branch (create a merge commit)
+
+Stay on your **dev branch** (the one used for CF-XR186 + LED aggregation), then:
+
+```sh
+git checkout <your-dev-branch>
+
+git merge --no-ff pr-19903-head -m "$(cat <<'EOF'
+Merge PR #19903 (ledtrig-network LED trigger)
+
+Brings in kmod-ledtrig-network and kernel support required for CF-XR186
+aggregated WLAN LED (see plan / PR #22471 discussion).
+
+Link: https://github.com/openwrt/openwrt/pull/19903
+EOF
+)"
+```
+
+**Why `--no-ff`:** Preserves a readable merge bubble so `git log --first-parent` on the dev branch still shows your device commits, while the second parent chain carries #19903.
+
+**If the merge conflicts:** Typical hotspots are **`target/linux/generic/config-6.18`** (if your branch also touched kernel config) or **`package/kernel/linux/modules/leds.mk`** (if you or `main` added adjacent kernel packages). Resolve by:
+
+1. Opening each conflicted file; search for `<<<<<<<`.
+2. Keeping **both** unrelated edits where possible; for `config-6.18`, ensure **`CONFIG_LEDS_TRIGGER_NETWORK`** ends up set as in #19903 (module `m` or `y` per the PR — do not leave it “not set”).
+3. `git add` resolved paths, then `git merge --continue`.
+
+**Never** drop the files listed in §1.2 without replacing them — the CF-XR186 DTS `linux,default-trigger = "network"` **depends** on them.
+
+### 4.6 After merge: mandatory tree sanity checks
+
+Run these from the repo root:
+
+```sh
+# Files from PR #19903 must exist
+test -f target/linux/generic/files/drivers/leds/trigger/ledtrig-network.c
+test -f target/linux/generic/hack-6.18/820-ledtrig-network-module.patch
+grep -q ledtrig-network package/kernel/linux/modules/leds.mk
+
+# MediaTek uses kernel 6.18 — confirm patch version matches
+grep KERNEL_PATCHVER target/linux/mediatek/Makefile
+```
+
+If any check fails, the merge was incomplete or resolved incorrectly.
+
+### 4.7 Build verification (host, before DTS changes)
+
+Configure for **mediatek / filogic** and **comfast_cf-xr186** (or any filogic board to compile generic kernel), then:
+
+```sh
+make defconfig
+# or: scripts/feeds update && scripts/feeds install -a  (if you use feeds)
+make target/linux/compile V=s
+```
+
+Watch for **patch application errors** under `target/linux/generic/patches-*` or **hack-6.18**. If `820-ledtrig-network-module.patch` fails to apply, your branch’s kernel tree may have diverged from what #19903 expects — rebase your branch onto a newer `openwrt/main` and **re-fetch** `pull/19903/head`, or coordinate with #19903’s author for a refreshed patch.
+
+### 4.8 Runtime verification (device or QEMU if applicable)
+
+After flashing an image built from the merged branch (you may temporarily omit CF-XR186 DTS `network` trigger and only verify the module exists):
+
+```sh
+# Module present
+ls /lib/modules/$(uname -r)/ledtrig-network.ko 2>/dev/null || modinfo ledtrig-network
+
+# Trigger registered in kernel (any LED can list it once module is loaded)
+grep -w network /sys/class/leds/*/trigger 2>/dev/null | head -3
+```
+
+If **`network` never appears** in any LED’s `trigger` list after `modprobe ledtrig-network`, do **not** proceed to §5 DTS changes — fix kernel / module packaging first.
+
+### 4.9 Relationship to “wait for main” (optional cleanup later)
+
+| Situation | Action |
+|-----------|--------|
+| **#19903 merges to `openwrt/main` before you open the final device PR** | Rebase (or merge) **`openwrt/main`** into your dev branch; you may **drop** the local merge commit of `pr-19903-head` if `main` now contains the same patches (use `git rebase -i` or a fresh branch from `main` and cherry-pick only CF-XR186 commits). |
+| **#19903 still open when you open the device PR** | Keep the merge commit (or explicit cherry-picks). In the **PR description**, state: *“Depends on / includes changes from #19903 until that PR merges.”* Link both [#19903](https://github.com/openwrt/openwrt/pull/19903) and [#22471](https://github.com/openwrt/openwrt/pull/22471). |
+
+### 4.10 Fallback if merge is impossible (last resort)
+
+If `git merge pr-19903-head` cannot be completed cleanly and rebasing #19903 onto your branch is too costly, fall back to **cherry-picking the individual commits** from #19903 in order (`git log --reverse main..pr-19903-head`), or **vendor** the same file set as in §1.2 with a single commit that cites `Link: https://github.com/openwrt/openwrt/pull/19903` and preserves `Signed-off-by` / `Co-authored-by` per OpenWrt contribution rules. Document the reason in the merge request for other developers.
 
 ---
 
