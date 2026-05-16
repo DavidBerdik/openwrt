@@ -7,7 +7,7 @@ todos:
     status: completed
   - id: filogic-kmod
     content: Add `kmod-ledtrig-network` to `DEVICE_PACKAGES` for `comfast_cf-xr186` in target/linux/mediatek/image/filogic.mk
-    status: pending
+    status: completed
   - id: dts-network-trigger
     content: In mt7981b-comfast-cf-xr186.dts, set `linux,default-trigger = "network"` on `wifi_blue` only; optionally add `family = "wlan"` and `mode = "link tx rx"`
     status: pending

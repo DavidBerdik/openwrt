@@ -1038,7 +1038,7 @@ define Device/comfast_cf-xr186
   DEVICE_DTS := mt7981b-comfast-cf-xr186
   DEVICE_DTS_DIR := ../dts
   SUPPORTED_DEVICES += cf-xr186
-  DEVICE_PACKAGES := kmod-mt7915e kmod-mt7981-firmware mt7981-wo-firmware
+  DEVICE_PACKAGES := kmod-mt7915e kmod-mt7981-firmware mt7981-wo-firmware kmod-ledtrig-network
   KERNEL := kernel-bin | lzma | \
 	fit lzma $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb
   KERNEL_INITRAMFS := kernel-bin | lzma | \
