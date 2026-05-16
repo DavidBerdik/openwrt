@@ -10,7 +10,7 @@ todos:
     status: completed
   - id: dts-network-trigger
     content: In mt7981b-comfast-cf-xr186.dts, set `linux,default-trigger = "network"` on `wifi_blue` only; optionally add `family = "wlan"` and `mode = "link tx rx"`
-    status: pending
+    status: completed
   - id: 01-leds-cleanup
     content: In filogic base-files 01_leds, remove wlan2g/wlan5g netdev lines for comfast,cf-xr186; keep blue:lan on eth0; add short comment if desired
     status: pending
