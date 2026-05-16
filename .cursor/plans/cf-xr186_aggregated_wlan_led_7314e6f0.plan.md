@@ -13,7 +13,7 @@ todos:
     status: completed
   - id: 01-leds-cleanup
     content: In filogic base-files 01_leds, remove wlan2g/wlan5g netdev lines for comfast,cf-xr186; keep blue:lan on eth0; add short comment if desired
-    status: pending
+    status: completed
   - id: runtime-verify
     content: Run the §6 test matrix on hardware (both bands, single band, repeater uplink) and capture dmesg/sysfs for the PR thread
     status: pending
