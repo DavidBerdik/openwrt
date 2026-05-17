@@ -43,25 +43,25 @@
 	leds {
 		compatible = "gpio-leds";
 
-		led_wifi_blue: wifi_blue {
+		led_wifi_blue: wifi-blue {
 			color = <LED_COLOR_ID_BLUE>;
 			function = LED_FUNCTION_WLAN;
 			gpios = <&pio 6 GPIO_ACTIVE_LOW>;
 		};
 
-		led_wifi_green: wifi_green {
+		led_wifi_green: wifi-green {
 			color = <LED_COLOR_ID_GREEN>;
 			function = LED_FUNCTION_WLAN;
 			gpios = <&pio 35 GPIO_ACTIVE_LOW>;
 		};
 
-		led_wifi_red: wifi_red {
+		led_wifi_red: wifi-red {
 			color = <LED_COLOR_ID_RED>;
 			function = LED_FUNCTION_WLAN;
 			gpios = <&pio 34 GPIO_ACTIVE_LOW>;
 		};
 
-		led_lan: lan_blue {
+		led_lan: led-lan {
 			color = <LED_COLOR_ID_BLUE>;
 			function = LED_FUNCTION_LAN;
 			gpios = <&pio 4 GPIO_ACTIVE_LOW>;
