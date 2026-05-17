@@ -61,7 +61,7 @@
 			gpios = <&pio 34 GPIO_ACTIVE_LOW>;
 		};
 
-		led_lan: led-lan {
+		led_lan: lan-blue {
 			color = <LED_COLOR_ID_BLUE>;
 			function = LED_FUNCTION_LAN;
 			gpios = <&pio 4 GPIO_ACTIVE_LOW>;
