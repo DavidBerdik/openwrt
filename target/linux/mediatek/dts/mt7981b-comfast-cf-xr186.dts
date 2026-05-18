@@ -222,8 +222,4 @@
 		nvmem-cells = <&macaddr_factory_8000 0>;
 		nvmem-cell-names = "mac-address";
 	};
-
-	led {
-		status = "disabled";
-	};
 };
